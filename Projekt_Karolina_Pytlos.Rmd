@@ -1,0 +1,302 @@
+---
+title: "Analiza danych R"
+author: "Karolina Pytlos"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  html_document:
+    keep_md: yes
+    toc: yes
+    toc_float: yes
+---
+
+``` {r libraries, echo = FALSE, message = FALSE}
+library(dplyr)
+library(knitr)
+library(DT)
+library(ggplot2)
+library(plotly)
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, results = FALSE, warning = FALSE, error = FALSE, message = FALSE, out.width='800px', out.height='800px', cache = FALSE)
+```
+
+## Podsumowanie analizy danych  
+Na podstawie wykresu mo¿na stwierdziæ, ¿e dane z tej samej kategorii tj. local/dict/FoFc s¹ skorelowane dodatnio. Porównuj¹c jednak wartoœci z kategorii local i dict widaæ, ¿e s¹ skorelowane ujemnie.
+
+Ligand o identyfikatorze SO4 jest najbardziej wykorzystywan¹ cz¹steczk¹ w bia³ka.
+
+Rozk³ady liczy atomów i elektronów s¹ proporcojnalne. Jeœli ligand ma du¿o atomów to równie¿ ma du¿o elektronów.
+
+Przy niezgodnoœciach liczby atomów i elektrónów ligandy o stosunkowo niewielkiej liczbie atomów i elektronów maj¹ wiêksze niezgodnoœci.
+
+
+
+## 1. Wykorzystane biblioteki
+Przed wykonaniem skryptów nale¿y zainstalowaæ poni¿sze biblioteki poleceniem: *install.packages("nazwa_biblioteki")*     
+-- **dplyr**    
+-- **knitr**    
+-- **DT**    
+-- **ggplot2**   
+-- **plotly**  
+
+
+## 2. Kod zapewniaj¹cy powtarzalnoœæ
+Kod przetwarzaj¹cy dane znajduje siê w pliku **ScriptCleanData.R**.  
+
+## 3. Wczytanie danych z pliku
+Skrypt **ScriptCleanData.R** na samym koñcu zapisu dane œrodowiska do pliku.  
+Tutaj nastêpuje zaczytanie zapisanych w pliku danych.  
+
+``` {r load_environment, echo = TRUE}
+load(paste(getwd(), "CleanData.RData", sep = "/"))
+```
+
+
+## 4. Kod usuwaj¹cy wybrane wiersze res_name
+Kod znajdujê siê w pliku **ScriptCleanData.R**.  
+
+
+## 5. Kod przetwarzaj¹cy brakuj¹ce dane
+Kod znajdujê siê w pliku **ScriptCleanData.R**.  
+
+
+## 6. Podsumowanie zbioru danych
+### 1. Rozmiar zbioru danych
+
+``` {r number_of_rows_cols}
+nrows <- nrow(clean_data);
+ncols <- ncol(clean_data);
+```
+
+-- liczba wierszy: **`r nrows`**  
+-- liczba kolumn: **`r ncols`**  
+
+### 2. Podstawowe statystyki  
+
+``` {r basic_statistics, results = TRUE}
+columns_types <- sapply(clean_data, class);
+df <- clean_data[which(columns_types == "numeric" | columns_types == "integer")];
+
+DT::datatable((as.data.frame(summary(df)) %>% select(Var2, Freq)), 
+              style="bootstrap", filter = "top", rownames = FALSE,
+              options = list(dom = 'Bfrtip'),
+              colnames = c('Nazwa pola', 'Wartoœæ')) %>%
+              formatRound(numeric(), 2);
+
+rm(df);
+```
+
+
+
+## 7. Ograniczenie res_name TOP 50
+
+``` {r res_name_top_50, echo = TRUE}
+columns_names <- colnames(clean_data);
+
+top50 <- head(clean_data %>% group_by(res_name) %>% 
+  summarise(res_name_count = n()) %>% 
+  arrange(desc(res_name_count)),50);
+
+clean_data <- clean_data %>% filter(res_name %in% top50[["res_name"]]);
+```
+
+
+
+## 8. Korelacja zmiennych
+
+``` {r correlation}
+top50_corellation <- cor(clean_data[which(columns_types == "numeric" | columns_types == "integer")]);
+columns_names <- colnames(top50_corellation);
+```
+
+### Wykres zmiennych bez kolumn *part_*
+
+``` {r matrix_corellation}
+matrixGraph <- function(data_df, columnNames_v)
+{
+  colsx <- vector();
+  colsy <- vector();
+  colsv <- vector();
+  
+  for (colnx in columnNames_v) 
+  {
+    for (colny in columnNames_v)
+    {
+      colsx <- c(colsx, colnx);
+      colsy <- c(colsy, colny);
+    }
+  }
+  
+  for (colnx in columnNames_v) 
+  {
+    for (colny in columnNames_v)
+    {
+      colsv <- c(colsv, data_df[colnx, colny])
+    }
+  }
+  
+  
+  return(data.frame(x = colsx, y = colsy, value = colsv));
+}
+```
+
+``` {r correlation_graph}
+df_cor <- matrixGraph(as.data.frame(top50_corellation), columns_names[!startsWith(columns_names, "part_")]);
+
+ggplot(data = df_cor, aes(x=x, y=y, fill=value)) + geom_tile(color = "white") + scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, limit = c(-1,1), space = "Lab", name="Pearson\nCorrelation") + theme(axis.text=element_text(size = 7), axis.text.x = element_text(hjust = 1, angle = 90), legend.title = element_text(size = 8), legend.text = element_text(size = 8, hjust = 1), axis.title.x = element_blank(), axis.title.y = element_blank())
+
+rm(df_cor);
+rm(top50);
+rm(top50_corellation);
+```
+
+
+## 9. Przyk³ady klas res_name
+
+``` {r classes_res_name, results = TRUE}
+exmp_df <- (clean_data %>% 
+              group_by(res_name, pdb_code) %>% 
+              summarise(pdb_code_count = n()) %>% 
+              summarise(res_name_sum = sum(pdb_code_count)) %>%
+              arrange(res_name));
+
+DT::datatable(exmp_df, style="bootstrap", filter = "top",
+              rownames = FALSE, options = list(dom = 'Bfrtip'),
+              colnames = c("Ligand", "Suma wyst¹pieñ ligandu"));
+
+rm(exmp_df);
+```
+
+
+## 10. Wykresy rozk³adów liczby atomów i elektronów
+### 1. Rozk³ad atomów  
+
+``` {r atoms_distribution, results = TRUE}
+dist_atom <- (clean_data %>% select (res_name, local_res_atom_non_h_count) %>% arrange(res_name));
+
+x_v <- dist_atom[["res_name"]];
+y_v <- sapply(dist_atom[["local_res_atom_non_h_count"]], toString);
+
+plot_ly(x=x_v, y=y_v, type = "histogram", histfunc='sum') %>%
+  layout(yaxis=list(type='linear', exponentformat='none'));
+
+rm(x_v);
+rm(y_v);
+rm(dist_atom);
+```
+
+
+### 2. Rozk³ad elektronów  
+
+``` {r electrons_distribution, results = TRUE}
+dist_elect <- (clean_data %>% select (res_name, local_res_atom_non_h_electron_sum) %>% arrange(res_name));
+
+x_v <- dist_elect[["res_name"]];
+y_v <- sapply(dist_elect[["local_res_atom_non_h_electron_sum"]], toString);
+
+plot_ly(x=x_v, y=y_v, type = "histogram", histfunc='sum') %>%
+  layout(yaxis=list(type='linear', exponentformat='none'));
+
+rm(x_v);
+rm(y_v);
+rm(dist_elect);
+```
+
+
+## 11. Niezgodnoœæ liczby atomów i elektronów  
+### 1. Niezgodnoœæ atomów  
+
+``` {r atoms_variance, results = TRUE}
+diff_atom <- head(clean_data %>% 
+  distinct(res_name, local_res_atom_non_h_count, dict_atom_non_h_count) %>%
+  mutate(localAtom_vs_dictAtom = (local_res_atom_non_h_count / dict_atom_non_h_count)) %>%
+  group_by(res_name) %>%
+  summarise(localAtom_vs_dictAtom_sum = sum(localAtom_vs_dictAtom)) %>%
+  arrange(desc(localAtom_vs_dictAtom_sum)), 10);
+
+diff_atom[["localAtom_vs_dictAtom_sum"]] <- lapply(diff_atom[["localAtom_vs_dictAtom_sum"]], round, 2)
+
+DT::datatable(diff_atom, 
+              style="bootstrap", filter = "top", rownames = FALSE,
+              options = list(dom = 'Bfrtip', paging = FALSE),
+              colnames = c("Ligand", "Liczba atomów local vs liczba atomów dict")) %>%
+              formatRound(numeric(), 2);
+
+rm(diff_atom);
+```
+
+
+### 2. Niezgodnoœæ elektronów  
+
+``` {r electrons_variance, results = TRUE}
+diff_elect <- head(clean_data %>%
+  distinct(res_name, local_res_atom_non_h_electron_sum , dict_atom_non_h_electron_sum) %>%
+  mutate(localElectron_vs_dictElectron = (local_res_atom_non_h_electron_sum / dict_atom_non_h_electron_sum)) %>%
+  group_by(res_name) %>%
+  summarise(localElectron_vs_dictElectron_sum = sum(localElectron_vs_dictElectron)) %>%
+  arrange(desc(localElectron_vs_dictElectron_sum)), 10);
+
+diff_elect[["localElectron_vs_dictElectron_sum"]] <- lapply(diff_elect[["localElectron_vs_dictElectron_sum"]], round, 2)
+
+DT::datatable(diff_elect, 
+              style="bootstrap", filter = "top", rownames = FALSE,
+              options = list(dom = 'Bfrtip', paging = FALSE),
+              colnames = c("Ligand", "Liczba elektronów local vs liczba elektronów dict")) %>%
+              formatRound(numeric(), 2);
+
+rm(diff_elect);
+```
+
+  
+## 12. Rozk³ad wartoœci part_01  
+
+```{r, results = TRUE}
+row_v <- vector();
+value_v <- vector();
+colNames <- colnames(clean_data %>% select(starts_with("part_01")));
+dataSet <- (clean_data %>% select(starts_with("part_01")));
+
+for (col in colNames)
+{
+  row_v <- c(row_v, col);
+}
+
+for (x in colNames)
+{
+  for (y in colNames)
+  {
+    value_v <- c(value_v, dataSet[which(colNames == x), y]);
+  }
+}
+
+hist_data <- data.frame(column_name = row_v, value = value_v);
+
+ggplot(hist_data, aes(x=log(value))) + geom_histogram(binwidth=.5, colour="black", fill="yellow") + 
+  geom_vline(aes(xintercept=mean(log(value), na.rm=T)), color="red", linetype="dashed", size=1) +
+  geom_text(aes(x=12, na.rm=T), label=mean(log(hist_data[["value"]]), na.rm=T), y=600, colour="blue", text=element_text(size=8));
+
+rm(x);
+rm(y);
+rm(col);
+rm(colNames);
+rm(dataSet);
+rm(row_v);
+rm(value_v);
+rm(hist_data);
+```
+  
+## 13. Interaktywny wykres  
+
+  
+``` {r animation, results = TRUE}
+data <- clean_data %>% group_by(res_name) %>% summarise(res_name_count = n_distinct(pdb_code));
+
+plot_ly(data, labels = data[["res_name"]],  values = data[["res_name_count"]], type = 'pie', showlegend = FALSE, textposition = 'inside', insidetextfont = list(color = '#FFFFFF')) %>%
+  layout(title = 'W ilu bia³kach wystêpuje dany ligand',
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+rm(data);
+```
+
