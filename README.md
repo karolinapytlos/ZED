@@ -2,10 +2,10 @@
 Zaawansowana eksploracja danych
 
 ## Analiza danych R  
-**R for Windows Version 3.5.1**  
-**RStudio Version 1.1.463**  
-**Rtools Version 3.5**  
-**Biblioteki**  
+**1. R for Windows Version 3.5.1**  
+**2. RStudio Version 1.1.463**  
+**3. Rtools Version 3.5**  
+**4. Biblioteki**  
 **- dplyr**  
 **- knitr**  
 **- DT**  
