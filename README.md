@@ -6,8 +6,8 @@ Zaawansowana eksploracja danych
 **RStudio Version 1.1.463**  
 Rtools Version 3.5  
 Biblioteki  
--- dplyr  
--- knitr  
--- DT  
--- ggplot2  
--- plotly  
+--- dplyr  
+--- knitr  
+--- DT  
+--- ggplot2  
+--- plotly  
