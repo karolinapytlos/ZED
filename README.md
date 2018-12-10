@@ -14,7 +14,7 @@ Zaawansowana eksploracja danych
 **- ggplot2**  
 **- plotly**  
 
-## Proces
+## Uruchomienie w RStudio
 1. Uruchom skrypt ScriptCleanData.R.
 2. Możesz zresetować środowisko RStudio.
 3. Na początku pliku Projekt_Karolina_Pytlos.Rmd w sekcji setup zmień wartość CACHE = FALSE na CACHE = TRUE.
